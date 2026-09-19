@@ -134,6 +134,33 @@ describe('SafetyEngine', () => {
     expect(result.reason).toContain('utility disconnection');
   });
 
+  it('should block Medicare card and refund identity fraud scams', () => {
+    const result = SafetyEngine.evaluateMessage({
+      ...baseMessage,
+      content: 'You are eligible for a new plastic medicare card, verify your medicare number now.',
+    });
+    expect(result.riskLevel).toBe('BLOCK');
+    expect(result.reason).toContain('Medicare identity fraud');
+  });
+
+  it('should block IRS impersonation and back taxes fraud', () => {
+    const result = SafetyEngine.evaluateMessage({
+      ...baseMessage,
+      content: 'IRS audit warning: back taxes owed, pay immediately or face federal tax warrant.',
+    });
+    expect(result.riskLevel).toBe('BLOCK');
+    expect(result.reason).toContain('IRS tax impersonation fraud');
+  });
+
+  it('should block grandchild emergency imposter scam patterns', () => {
+    const result = SafetyEngine.evaluateMessage({
+      ...baseMessage,
+      content: 'Grandma, your grandson is in jail after a car accident send bail right away.',
+    });
+    expect(result.riskLevel).toBe('BLOCK');
+    expect(result.reason).toContain('Grandchild emergency imposter scam');
+  });
+
   it('should ignore restricted terms if sender is elderly (not a volunteer)', () => {
     const result = SafetyEngine.evaluateMessage({
       ...baseMessage,

@@ -7,6 +7,7 @@ import { createServer as createViteServer } from 'vite';
 import { RateLimiter } from './src/domain/security/RateLimiter';
 import {
   helmetMiddleware,
+  originValidationMiddleware,
   sanitizationMiddleware,
   createRateLimitMiddleware,
   safeErrorHandler,
@@ -25,6 +26,7 @@ const PORT = 3000;
 app.use(helmetMiddleware);
 app.use(compression());
 app.use(express.json({ limit: '256kb' }));
+app.use(originValidationMiddleware);
 app.use(sanitizationMiddleware);
 
 // Rate Limiters for Resource Protection

@@ -43,5 +43,6 @@ describe('Sanitizer Security Engine', () => {
     expect(sanitized.valid).toBe('data');
     expect((sanitized as Record<string, unknown>).__proto__).toBeUndefined();
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+    expect(Object.prototype.hasOwnProperty.call(sanitized, 'valid')).toBe(true);
   });
 });

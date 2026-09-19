@@ -103,14 +103,21 @@ export class MatchingEngine {
         }
       }
 
-      // Must maintain positive net compatibility
-      if (score > 0) {
+      // Must maintain positive net compatibility and valid finite number
+      if (Number.isFinite(score) && score > 0) {
         scoredCandidates.push({ candidate, score });
       }
     }
 
-    // 3. Top-K Selection
-    scoredCandidates.sort((a, b) => b.score - a.score);
+    // 3. Top-K Selection with deterministic tie-breaking
+    scoredCandidates.sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+      const ratingDiff = (b.candidate.rating || 0) - (a.candidate.rating || 0);
+      if (ratingDiff !== 0) return ratingDiff;
+      return a.candidate.id.localeCompare(b.candidate.id);
+    });
 
     const results: CompanionCandidate[] = [];
     const maxResults = Math.min(limit, scoredCandidates.length);

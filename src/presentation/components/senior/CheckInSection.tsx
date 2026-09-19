@@ -1,9 +1,10 @@
-import React from 'react';
-import { ShieldCheck, Key, CheckCircle2, RotateCcw, Volume2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ShieldCheck, Key, CheckCircle2, RotateCcw, Volume2, Eye, EyeOff } from 'lucide-react';
 import { SeniorProfile } from '../../../shared/types';
 
 interface CheckInSectionProps {
   senior: SeniorProfile;
+  privacyShield?: boolean;
   onCheckInToday: (mood: 'happy' | 'peaceful' | 'tired' | 'lonely' | 'need_talk') => void;
   onResetCheckIn?: () => void;
   onOpenTalkModal: () => void;
@@ -13,12 +14,18 @@ interface CheckInSectionProps {
 
 export const CheckInSection: React.FC<CheckInSectionProps> = React.memo(({
   senior,
+  privacyShield = true,
   onCheckInToday,
   onResetCheckIn,
   onOpenTalkModal,
   onOpenSafetyDetails,
   onSpeak,
 }) => {
+  const [isPinRevealed, setIsPinRevealed] = useState(!privacyShield);
+
+  useEffect(() => {
+    setIsPinRevealed(!privacyShield);
+  }, [privacyShield]);
   return (
     <section className="bg-white rounded-3xl p-6 sm:p-9 border-2 border-[#EFE5D6] shadow-sm relative overflow-hidden bg-warm-hearth">
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
@@ -79,9 +86,20 @@ export const CheckInSection: React.FC<CheckInSectionProps> = React.memo(({
           </div>
 
           <div className="flex items-baseline gap-3">
-            <span className="font-mono text-3xl sm:text-5xl font-black text-[#1E4D3B] tracking-widest bg-white px-5 py-2 rounded-2xl border-2 border-[#D5C6B0] shadow-2xs">
-              {senior.safetyPin}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-3xl sm:text-5xl font-black text-[#1E4D3B] tracking-widest bg-white px-5 py-2 rounded-2xl border-2 border-[#D5C6B0] shadow-2xs select-none">
+                {isPinRevealed ? senior.safetyPin : '••••'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsPinRevealed(!isPinRevealed)}
+                className="p-2.5 rounded-xl bg-white border border-[#D5C6B0] hover:bg-[#FAF6EE] text-[#574737] transition-colors cursor-pointer"
+                title={isPinRevealed ? 'Hide secret PIN for privacy' : 'Reveal secret PIN'}
+                aria-label={isPinRevealed ? 'Hide secret PIN' : 'Reveal secret PIN'}
+              >
+                {isPinRevealed ? <EyeOff className="w-5 h-5 text-[#574737]" /> : <Eye className="w-5 h-5 text-[#1E4D3B]" />}
+              </button>
+            </div>
             <p className="text-xs sm:text-sm text-[#6B5A47] max-w-[200px] leading-snug">
               Never open your door until your visitor says this exact 4-digit code.
             </p>

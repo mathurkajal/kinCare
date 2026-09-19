@@ -158,6 +158,7 @@ export const SeniorView: React.FC<SeniorViewProps> = React.memo(({
       {/* 1. Warm Hearth, Morning Greeting & Wellness Check-In */}
       <CheckInSection
         senior={senior}
+        privacyShield={privacyShield}
         onCheckInToday={onCheckInToday}
         onResetCheckIn={onResetCheckIn}
         onOpenTalkModal={onOpenTalkModal}

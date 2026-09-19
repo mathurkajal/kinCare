@@ -10,7 +10,51 @@ export const helmetMiddleware = helmet({
   xContentTypeOptions: true,
   xFrameOptions: { action: 'sameorigin' },
   referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  permittedCrossDomainPolicies: { permittedPolicies: 'none' },
 });
+
+// Origin & CSRF guard for state-mutating requests
+export function originValidationMiddleware(req: Request, res: Response, next: NextFunction): void {
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+    const origin = req.headers['origin'];
+    const host = req.headers['host'];
+    const forwardedHost = req.headers['x-forwarded-host'] as string | undefined;
+    
+    // If an Origin header is explicitly sent (e.g. from browsers in CORS or cross-origin attacks)
+    if (origin) {
+      try {
+        const originUrl = new URL(origin);
+        const originHostname = originUrl.hostname.toLowerCase();
+        const originHost = originUrl.host.toLowerCase();
+        
+        // Allowed target hosts include the direct host, forwarded host, or container localhosts
+        const validHosts = [
+          host?.toLowerCase(),
+          forwardedHost?.split(',')[0]?.trim().toLowerCase(),
+        ].filter((h): h is string => Boolean(h));
+
+        const isLocalhost = originHostname === 'localhost' || originHostname === '127.0.0.1' || originHostname === '0.0.0.0';
+        const isMatchingHost = validHosts.some(h => originHost === h || originHostname === h.split(':')[0]);
+        const isTrustedCloudDomain = originHostname.endsWith('.run.app') || 
+                                     originHostname.endsWith('.google.com') || 
+                                     originHostname.endsWith('.googleusercontent.com') ||
+                                     originHostname.endsWith('.ai.studio');
+
+        if (!isMatchingHost && !isLocalhost && !isTrustedCloudDomain) {
+          res.status(403).json({
+            error: 'Forbidden',
+            message: 'Cross-site request forgery protection: untrusted origin rejected.',
+          });
+          return;
+        }
+      } catch {
+        res.status(400).json({ error: 'Bad Request', message: 'Invalid Origin header.' });
+        return;
+      }
+    }
+  }
+  next();
+}
 
 // Deep recursive payload sanitizer to prevent prototype pollution & XSS
 export function sanitizationMiddleware(req: Request, _res: Response, next: NextFunction): void {

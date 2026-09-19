@@ -23,12 +23,15 @@ export class SafetyEngine {
     { pattern: /(send money|gift card|bank account|transfer|crypto|bitcoin|western union|moneygram|wire transfer|zelle|venmo|cash app|\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b)/i, reason: 'Requesting financial transactions' },
     { pattern: /(what is your address|where do you live exactly|give me your home keys)/i, reason: 'Requesting exact location' },
     { pattern: /\b\d{3}-\d{2}-\d{4}\b/, reason: 'Requesting Social Security Number' },
-    { pattern: /(arrest|police will come|jail|warrant for your arrest|fbi will visit)/i, reason: 'Threatening or coercive language' },
+    { pattern: /(grandson|granddaughter|grandchild)[^]{0,100}?(jail|arrested|hospital|accident|bail)/i, reason: 'Grandchild emergency imposter scam' },
+    { pattern: /(new medicare card|plastic medicare card|verify your medicare number|medicare refund)/i, reason: 'Medicare identity fraud' },
+    { pattern: /(irs audit|back taxes owed|federal tax warrant|irs payment via gift card)/i, reason: 'IRS tax impersonation fraud' },
     { pattern: /(anydesk|teamviewer|quicksupport|ultraviewer|screen connect|logmein|remote control of your pc|remote access)/i, reason: 'Requesting unauthorized remote computer access' },
     { pattern: /(power of attorney|sign over the deed|change your will|make me your beneficiary|inherit your house)/i, reason: 'Requesting legal or inheritance documents' },
     { pattern: /(sell your medication|give me your oxy|percocet|pain pills|narcotics prescription)/i, reason: 'Requesting controlled prescription medications' },
     { pattern: /(you won the lottery|sweepstakes prize winner|processing fee to collect your prize|tax fee before receiving millions)/i, reason: 'Promoting sweepstakes or lottery scams' },
     { pattern: /(power will be cut off|water will be disconnected|pay your utility immediately or shut off)/i, reason: 'Simulating utility disconnection threats' },
+    { pattern: /(arrest|police will come|jail|warrant for your arrest|fbi will visit)/i, reason: 'Threatening or coercive language' },
   ];
 
   // High-efficiency evaluation cache for identical message payloads

@@ -46,10 +46,18 @@ export class Sanitizer {
   }
 
   /**
-   * Deeply sanitizes JSON-like payloads to eliminate prototype pollution vectors.
+   * Deeply sanitizes JSON-like payloads to eliminate prototype pollution vectors and XSS strings.
    */
   public static deepSanitizeObject<T>(obj: T): T {
-    if (obj === null || typeof obj !== 'object') {
+    if (obj === null || obj === undefined) {
+      return obj;
+    }
+
+    if (typeof obj === 'string') {
+      return Sanitizer.cleanText(obj) as unknown as T;
+    }
+
+    if (typeof obj !== 'object') {
       return obj;
     }
 

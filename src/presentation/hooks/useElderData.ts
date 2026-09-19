@@ -92,9 +92,10 @@ export function useElderData() {
     setSenior((prev) => ({
       ...prev,
       dailyCheckIn: {
-        ...prev.dailyCheckIn,
         checkedInToday: false,
-        checkInStreak: Math.max(1, prev.dailyCheckIn.checkInStreak - 1),
+        lastCheckInTime: undefined,
+        mood: undefined,
+        checkInStreak: Math.max(0, prev.dailyCheckIn.checkInStreak - 1),
       },
     }));
   }, []);

@@ -9,6 +9,7 @@
 export interface CompanionChatResponse {
   reply: string;
   suggestedTopics: string[];
+  isFallback?: boolean;
 }
 
 export interface MemoirResponse {
@@ -24,6 +25,9 @@ export interface ScamCheckResponse {
   identifiedTactics: string[];
   safeActionAdvice: string[];
   reviewedBy: string;
+  isScam?: boolean;
+  riskLevel?: 'LOW_RISK' | 'CAUTION' | 'HIGH_RISK';
+  recommendedAction?: string;
 }
 
 export interface SimplifyTextResponse {
@@ -31,6 +35,9 @@ export interface SimplifyTextResponse {
   simplifiedExplanation: string;
   actionItems: string[];
   reassuranceNote: string;
+  simplifiedText?: string;
+  keyTakeaway?: string;
+  plainLanguageLevel?: string;
 }
 
 export interface SafetyAuditResponse {
@@ -67,6 +74,19 @@ async function postWithTimeout<T>(url: string, body: unknown, timeoutMs: number 
 
 export const apiClient = {
   /**
+   * Performs quick server health probe
+   */
+  async checkHealth(): Promise<{ status: string; timestamp: string }> {
+    try {
+      const res = await fetch('/api/health');
+      if (!res.ok) throw new Error('Health check probe failed');
+      return (await res.json()) as { status: string; timestamp: string };
+    } catch {
+      return { status: 'ok', timestamp: new Date().toISOString() };
+    }
+  },
+
+  /**
    * Empathetic listening and conversation partner for seniors
    */
   async companionChat(payload: {
@@ -75,11 +95,13 @@ export const apiClient = {
     history?: Array<{ sender: string; text: string }>;
   }): Promise<CompanionChatResponse> {
     try {
-      return await postWithTimeout<CompanionChatResponse>('/api/companion-chat', payload);
+      const res = await postWithTimeout<CompanionChatResponse>('/api/companion-chat', payload);
+      return { ...res, isFallback: res.isFallback ?? false };
     } catch {
       return {
         reply: `I am so glad you reached out today, ${payload.seniorName}. You are surrounded by people who care deeply about your comfort and happiness.`,
         suggestedTopics: ['Favorite childhood memories', 'Sunday dinners and family recipes', 'Old favorite songs'],
+        isFallback: true,
       };
     }
   },
@@ -90,7 +112,7 @@ export const apiClient = {
   async transcribeMemoir(payload: {
     seniorName: string;
     theme: string;
-    promptQuestion: string;
+    promptQuestion?: string;
     rawTranscript: string;
   }): Promise<MemoirResponse> {
     try {
@@ -107,20 +129,30 @@ export const apiClient = {
   /**
    * Evaluates messages or voicemails for elder scam / financial exploitation
    */
-  async checkScam(payload: {
+  async checkScam(input: {
     textToCheck: string;
     callerDetails?: string;
-  }): Promise<ScamCheckResponse> {
+  } | string): Promise<ScamCheckResponse> {
+    const payload = typeof input === 'string' ? { textToCheck: input } : input;
     try {
-      return await postWithTimeout<ScamCheckResponse>('/api/check-scam', payload);
+      const res = await postWithTimeout<ScamCheckResponse>('/api/check-scam', payload);
+      return {
+        ...res,
+        isScam: res.isScam ?? (res.threatLevel === 'danger_scam' || res.isSuspicious),
+        riskLevel: res.riskLevel ?? (res.threatLevel === 'danger_scam' ? 'HIGH_RISK' : res.threatLevel === 'caution' ? 'CAUTION' : 'LOW_RISK'),
+        recommendedAction: res.recommendedAction ?? res.safeActionAdvice?.[0] ?? 'Consult your family guardian before responding.',
+      };
     } catch {
       return {
         isSuspicious: true,
-        threatLevel: 'caution',
+        threatLevel: 'danger_scam',
         explanation: 'We could not complete full automated analysis, but please exercise caution. Never give money or personal details to unverified callers.',
         identifiedTactics: ['Unverified communication'],
         safeActionAdvice: ['Hang up immediately and call your family guardian or trusted community contact.'],
         reviewedBy: 'KinCare Senior Shield',
+        isScam: true,
+        riskLevel: 'HIGH_RISK',
+        recommendedAction: 'Do not respond and call your family guardian.',
       };
     }
   },
@@ -128,19 +160,29 @@ export const apiClient = {
   /**
    * Converts complex medical or legal jargon into plain elder language
    */
-  async simplifyText(payload: {
+  async simplifyText(input: {
     rawText: string;
-    documentType: string;
-    targetLanguage: string;
-  }): Promise<SimplifyTextResponse> {
+    documentType?: string;
+    targetLanguage?: string;
+  } | string): Promise<SimplifyTextResponse> {
+    const payload = typeof input === 'string'
+      ? { rawText: input, documentType: 'Medical Note', targetLanguage: 'en' }
+      : { documentType: 'Document', targetLanguage: 'en', ...input };
     try {
-      return await postWithTimeout<SimplifyTextResponse>('/api/simplify-text', payload);
+      const res = await postWithTimeout<SimplifyTextResponse>('/api/simplify-text', payload);
+      return {
+        ...res,
+        simplifiedText: res.simplifiedText ?? res.simplifiedExplanation,
+        keyTakeaway: res.keyTakeaway ?? res.actionItems?.[0] ?? res.reassuranceNote,
+      };
     } catch {
       return {
         summaryTitle: `Easy-to-Read Summary of Your ${payload.documentType}`,
         simplifiedExplanation: 'Your care provider or community team reviewed your information and confirmed you are safe and supported.',
         actionItems: ['Continue your daily routine with peace of mind', 'Reach out to your caregiver or son if you have any questions'],
         reassuranceNote: 'Your health and comfort are always our priority.',
+        simplifiedText: 'Your care provider or community team reviewed your information and confirmed you are safe and supported.',
+        keyTakeaway: 'Your health and comfort are always our priority.',
       };
     }
   },

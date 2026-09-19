@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { Navbar } from './components/Navbar';
 import { SeniorView } from './components/SeniorView';
-import { VolunteerView } from './components/VolunteerView';
-import { ProfessionalView } from './components/ProfessionalView';
-import { GuardianView } from './components/GuardianView';
-import { TrustedPeopleView } from './components/TrustedPeopleView';
-import { SeniorSettingsView } from './components/SeniorSettingsView';
 import { ReadAloudPlayer } from './components/ReadAloudPlayer';
 import { OneHandBottomDock } from './components/OneHandBottomDock';
+
+// Lazy load secondary role views to keep the elder primary bundle minimal & high-efficiency
+const VolunteerView = React.lazy(() => import('./components/VolunteerView').then(m => ({ default: m.VolunteerView })));
+const ProfessionalView = React.lazy(() => import('./components/ProfessionalView').then(m => ({ default: m.ProfessionalView })));
+const GuardianView = React.lazy(() => import('./components/GuardianView').then(m => ({ default: m.GuardianView })));
+const TrustedPeopleView = React.lazy(() => import('./components/TrustedPeopleView').then(m => ({ default: m.TrustedPeopleView })));
+const SeniorSettingsView = React.lazy(() => import('./components/SeniorSettingsView').then(m => ({ default: m.SeniorSettingsView })));
 
 import { useAccessibility } from './hooks/useAccessibility';
 import { useElderData } from './hooks/useElderData';
@@ -245,6 +247,7 @@ export default function App() {
 
       {/* Main Living Room Canvas */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 pt-6 sm:pt-8">
+        <React.Suspense fallback={<div className="p-12 text-center text-[#736352] font-serif-warm text-lg">Loading KinCare view...</div>}>
         {currentRole === 'elderly' && (
           <>
             {seniorNavSection === 'trusted_people' ? (
@@ -352,6 +355,7 @@ export default function App() {
             onOpenStoryModal={() => setIsStoryModalOpen(true)}
           />
         )}
+        </React.Suspense>
       </main>
 
       {/* Warm Peace-of-Mind Footer */}
