@@ -9,7 +9,22 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
-app.use(express.json());
+// Security Middleware: Headers & Payload Size Limits
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(self), geolocation=(self)');
+  next();
+});
+
+app.use(express.json({ limit: '256kb' }));
+
+// Input sanitization & boundary defense helper
+function sanitize(val: unknown, maxLen = 4000, fallback = ''): string {
+  if (typeof val !== 'string') return fallback;
+  return val.trim().slice(0, maxLen);
+}
 
 // Lazy GoogleGenAI initialization
 let aiClient: GoogleGenAI | null = null;
@@ -35,13 +50,15 @@ app.get('/api/health', (req, res) => {
 // 1. Empathetic Senior Companion & Listening Partner
 app.post('/api/companion-chat', async (req, res) => {
   try {
-    const { message, history, seniorName } = req.body;
+    const rawMessage = sanitize(req.body?.message, 1500);
+    const seniorName = sanitize(req.body?.seniorName, 100, 'Friend');
+    const history = Array.isArray(req.body?.history) ? req.body.history.slice(-6) : [];
     const ai = getAI();
 
     if (!ai) {
       // Warm fallback response when API key is not configured
       const warmFallbacks = [
-        `It is so wonderful to hear from you, ${seniorName || 'friend'}. Tell me more about what is bringing you comfort today. Have you had a nice cup of tea?`,
+        `It is so wonderful to hear from you, ${seniorName}. Tell me more about what is bringing you comfort today. Have you had a nice cup of tea?`,
         `That brings back such meaningful thoughts. You have lived through so much history and have so much wisdom to offer. What was your favorite place to walk or relax when you were younger?`,
         `Thank you for sharing that with me. Please remember that you are valued and never alone. Is there a favorite song or story that always puts a smile on your face?`,
       ];
@@ -52,13 +69,13 @@ app.post('/api/companion-chat', async (req, res) => {
           'Favorite childhood recipes & Sunday dinners',
           'Music from your youth & first records',
           'Places you loved traveling to or living in',
-          'A funny moment from earlier in life'
+          'A funny moment from earlier in life',
         ],
       });
     }
 
     const systemPrompt = `You are "KinCare Companion", a deeply empathetic, patient, dignified, and gentle conversational partner specifically designed for elderly people.
-Senior's name: ${seniorName || 'Dear Friend'}.
+Senior's name: ${seniorName}.
 Core Guidelines:
 1. Speak with genuine warmth, respect, patience, and comfort. Never speak down, baby, or patronize the elder.
 2. Keep sentences clear, well-spaced, and easy to read.
@@ -67,11 +84,11 @@ Core Guidelines:
 5. If they express any immediate physical danger, severe pain, or emergency, gently remind them to press the red SOS Emergency button on their screen so their family and local emergency contacts are alerted immediately.
 6. Provide 3 thoughtful, nostalgic, or gentle follow-up question ideas.`;
 
-    const conversationContext = Array.isArray(history)
-      ? history.map((h: { sender: string; text: string }) => `${h.sender}: ${h.text}`).join('\n')
-      : '';
+    const conversationContext = history
+      .map((h: { sender?: string; text?: string }) => `${sanitize(h.sender, 50)}: ${sanitize(h.text, 500)}`)
+      .join('\n');
 
-    const fullPrompt = `${conversationContext ? `Prior conversation:\n${conversationContext}\n\n` : ''}Senior says: "${message}"\n\nRespond with warmth, empathy, and 3 gentle conversation prompt questions.`;
+    const fullPrompt = `${conversationContext ? `Prior conversation:\n${conversationContext}\n\n` : ''}Senior says: "${rawMessage}"\n\nRespond with warmth, empathy, and 3 gentle conversation prompt questions.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3.8-flash',
@@ -81,21 +98,21 @@ Core Guidelines:
       },
     });
 
-    const replyText = response.text || `It is so lovely to speak with you today, ${seniorName || 'Maggie'}. How are you feeling this hour?`;
+    const replyText = response.text || `It is so lovely to speak with you today, ${seniorName}. How are you feeling this hour?`;
 
     return res.json({
       reply: replyText,
       suggestedTopics: [
         'A memory about your favorite school teacher',
         'Your first job and what you learned',
-        'The best advice your parents or grandparents gave you'
+        'The best advice your parents or grandparents gave you',
       ],
     });
   } catch (error) {
     console.error('Error in /api/companion-chat:', error);
     return res.json({
       reply: 'I am so glad you reached out today. You are surrounded by people who care deeply about your well-being and peace of mind.',
-      suggestedTopics: ['Memories of the 1960s', 'Gardening & nature', 'Favorite books']
+      suggestedTopics: ['Memories of the 1960s', 'Gardening & nature', 'Favorite books'],
     });
   }
 });
@@ -103,13 +120,16 @@ Core Guidelines:
 // 2. Life Story Heirloom & Wisdom Memoir Synthesizer
 app.post('/api/transcribe-memoir', async (req, res) => {
   try {
-    const { seniorName, theme, promptQuestion, rawTranscript } = req.body;
+    const seniorName = sanitize(req.body?.seniorName, 100, 'Our Elder');
+    const theme = sanitize(req.body?.theme, 100, 'Youth & Hope');
+    const promptQuestion = sanitize(req.body?.promptQuestion, 300, '');
+    const rawTranscript = sanitize(req.body?.rawTranscript, 5000);
     const ai = getAI();
 
     if (!ai) {
       return res.json({
-        title: `Memories of ${theme || 'Youth & Hope'}`,
-        refinedStory: `Recounted by ${seniorName || 'our elder'}: "${rawTranscript}". A poignant testament to resilience, connection, and the value of simple courtesies.`,
+        title: `Memories of ${theme}`,
+        refinedStory: `Recounted by ${seniorName}: "${rawTranscript}". A poignant testament to resilience, connection, and the value of simple courtesies.`,
         lifeLessonTakeaway: 'The quiet moments we spend helping others or learning something new often become the cornerstone of who we are.',
       });
     }
@@ -144,8 +164,8 @@ Return as clean JSON with keys: "title", "refinedStory", "lifeLessonTakeaway".`;
   } catch (error) {
     console.error('Error in /api/transcribe-memoir:', error);
     return res.json({
-      title: `A Treasured Memory from ${req.body.seniorName || 'Maggie'}`,
-      refinedStory: req.body.rawTranscript,
+      title: `A Treasured Memory from ${sanitize(req.body?.seniorName, 100, 'Friend')}`,
+      refinedStory: sanitize(req.body?.rawTranscript, 5000),
       lifeLessonTakeaway: 'Courage and kindness are the greatest gifts we leave to those who follow.',
     });
   }
@@ -154,11 +174,18 @@ Return as clean JSON with keys: "title", "refinedStory", "lifeLessonTakeaway".`;
 // 3. Automated Safety & Boundary Verification Screening
 app.post('/api/safety-audit', async (req, res) => {
   try {
-    const { title, description, category, userRole } = req.body;
+    const title = sanitize(req.body?.title, 200);
+    const description = sanitize(req.body?.description, 2000);
+    const category = sanitize(req.body?.category, 100);
+    const userRole = sanitize(req.body?.userRole, 50, 'volunteer');
     const ai = getAI();
 
     // Default safety heuristic
-    const suspiciousKeywords = ['bank account', 'wire money', 'credit card', 'password', 'will', 'inheritance', 'cash only', 'narcotics', 'prescription swap'];
+    const suspiciousKeywords = [
+      'bank account', 'wire money', 'credit card', 'password',
+      'will', 'inheritance', 'cash only', 'narcotics', 'prescription swap',
+      'social security', 'deed transfer', 'gift card'
+    ];
     const textToCheck = `${title} ${description}`.toLowerCase();
     const hasSuspiciousTerms = suspiciousKeywords.some(k => textToCheck.includes(k));
 
@@ -220,11 +247,12 @@ Return JSON with:
 // 4. Dedicated Senior Scam & Financial Exploitation Detector
 app.post('/api/check-scam', async (req, res) => {
   try {
-    const { textToCheck, callerDetails } = req.body;
+    const textToCheck = sanitize(req.body?.textToCheck, 4000);
+    const callerDetails = sanitize(req.body?.callerDetails, 200, 'Unknown');
     const ai = getAI();
 
     // Baseline heuristic detection
-    const normalized = (textToCheck || '').toLowerCase();
+    const normalized = textToCheck.toLowerCase();
     const scamTriggers = [
       { pattern: 'gift card', label: 'Demands payment via store gift cards (Target, Apple, Google Play)' },
       { pattern: 'wire money', label: 'Requests immediate wire transfer or Western Union' },
@@ -254,7 +282,7 @@ app.post('/api/check-scam', async (req, res) => {
             'Do NOT give them any money, bank numbers, or gift cards.',
             'Hang up the phone or delete the message immediately.',
             'Call your family guardian or trusted community advisor to double-check.',
-            'Remember: Real Medicare and Social Security will NEVER call to threaten you.'
+            'Remember: Real Medicare and Social Security will NEVER call to threaten you.',
           ],
           reviewedBy: 'KinCare Senior Shield Intelligence Engine',
         });
@@ -266,7 +294,7 @@ app.post('/api/check-scam', async (req, res) => {
         identifiedTactics: [],
         safeActionAdvice: [
           'If in doubt, call your verified family contact first.',
-          'Never share passwords, banking PINs, or card security codes over the phone.'
+          'Never share passwords, banking PINs, or card security codes over the phone.',
         ],
         reviewedBy: 'KinCare Senior Shield Intelligence Engine',
       });
@@ -274,7 +302,7 @@ app.post('/api/check-scam', async (req, res) => {
 
     const scamPrompt = `You are the lead elder safety investigator on KinCare. Analyze this message, voicemail, or letter sent to an older adult for signs of scams, phishing, or financial exploitation:
 Content: "${textToCheck}"
-Additional context/caller: "${callerDetails || 'Unknown'}"
+Additional context/caller: "${callerDetails}"
 
 Evaluate for:
 1. Imposter scams (IRS, Medicare, Social Security, Bank Fraud Dept, Police).
@@ -319,27 +347,29 @@ Return clean JSON:
 // 5. Complex Information Simplifier (Medical, Legal, Technical -> Plain Elder Language)
 app.post('/api/simplify-text', async (req, res) => {
   try {
-    const { rawText, documentType, targetLanguage } = req.body;
+    const rawText = sanitize(req.body?.rawText, 5000);
+    const documentType = sanitize(req.body?.documentType, 100, 'Information');
+    const targetLanguage = sanitize(req.body?.targetLanguage, 50, 'English');
     const ai = getAI();
 
     if (!ai) {
       return res.json({
-        summaryTitle: `Easy-to-Read Summary of Your ${documentType || 'Information'}`,
+        summaryTitle: `Easy-to-Read Summary of Your ${documentType}`,
         simplifiedExplanation: 'Here is what this means in simple, clear terms: You are doing well. Please continue your routine daily walks, take your medications as marked on your pill organizer with a glass of water, and keep your hallway rugs non-slip.',
         actionItems: [
           'Take your morning walk with your walking cane.',
           'Keep your secret 4-digit arrival PIN handy when visitors arrive.',
-          'Relax and have a pleasant afternoon tea.'
+          'Relax and have a pleasant afternoon tea.',
         ],
-        reassuranceNote: 'Everything looks standard and safe. There is nothing urgent to worry about.'
+        reassuranceNote: 'Everything looks standard and safe. There is nothing urgent to worry about.',
       });
     }
 
-    const simplifyPrompt = `You are a patient senior care communicator. Take this complex ${documentType || 'document'} written in clinical, legal, or technical jargon and convert it into warm, reassuring, crystal-clear 4th-grade reading level language for an older adult:
+    const simplifyPrompt = `You are a patient senior care communicator. Take this complex ${documentType} written in clinical, legal, or technical jargon and convert it into warm, reassuring, crystal-clear 4th-grade reading level language for an older adult:
 Complex Text:
 "${rawText}"
 
-Target Language: ${targetLanguage || 'English'}
+Target Language: ${targetLanguage}
 
 Provide:
 1. "summaryTitle": Short, comforting title (4-8 words).
@@ -365,7 +395,7 @@ Return valid JSON with keys: "summaryTitle", "simplifiedExplanation", "actionIte
       summaryTitle: 'Key Points to Remember',
       simplifiedExplanation: 'Your care provider or community team reviewed your information and confirmed you are safe and supported.',
       actionItems: ['Continue your daily routine', 'Reach out to your caregiver if you feel any discomfort'],
-      reassuranceNote: 'Your health and peace of mind are always our priority.'
+      reassuranceNote: 'Your health and peace of mind are always our priority.',
     });
   }
 });

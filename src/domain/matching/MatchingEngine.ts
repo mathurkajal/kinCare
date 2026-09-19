@@ -18,48 +18,62 @@ export interface ElderRequirements {
 export class MatchingEngine {
   /**
    * Safely matches an elder with potential volunteers.
-   * Time Complexity: O(N log N) where N is the number of eligible candidates due to sorting.
-   * Safety eligibility happens strictly BEFORE compatibility scoring.
+   * Safety eligibility check strictly gates compatibility scoring:
+   * Only candidates with 'APPROVED' verification state are scored.
+   * Time Complexity: O(N log N) where N is eligible candidates.
    */
   public static generateCandidates(
     requirements: ElderRequirements,
     pool: CompanionCandidate[],
     limit: number = 3
   ): CompanionCandidate[] {
-    
-    // 1. Eligibility Filtering (Strict Safety Check)
+    if (!pool || pool.length === 0 || limit <= 0) {
+      return [];
+    }
+
+    const preferredLangs = requirements?.preferredLanguages || [];
+    const elderInterests = requirements?.interests || [];
+    const maxDist = Math.max(0, requirements?.maxDistanceMiles ?? 10);
+
+    // 1. Eligibility Filtering (Strict Safety Check - zero tolerance for unverified volunteers)
     const eligiblePool = pool.filter(candidate => 
-      candidate.verificationState === 'APPROVED'
+      candidate && candidate.verificationState === 'APPROVED'
     );
+
+    if (eligiblePool.length === 0) {
+      return [];
+    }
 
     // 2. Compatibility Scoring
     const scoredCandidates = eligiblePool.map(candidate => {
       let score = 0;
+      const candidateLangs = candidate.languages || [];
+      const candidateInterests = candidate.interests || [];
       
-      // Language match is heavily weighted
-      const hasLanguageMatch = candidate.languages.some(lang => requirements.preferredLanguages.includes(lang));
+      // Language match is heavily weighted (comfort and comprehension)
+      const hasLanguageMatch = candidateLangs.some(lang => preferredLangs.includes(lang));
       if (hasLanguageMatch) score += 50;
 
-      // Interests match
-      const sharedInterests = candidate.interests.filter(int => requirements.interests.includes(int));
+      // Shared interests match (companionship rapport)
+      const sharedInterests = candidateInterests.filter(int => elderInterests.includes(int));
       score += (sharedInterests.length * 10);
 
-      // Distance penalty (closer is better, but exact address is never used here)
-      if (candidate.distanceMiles <= requirements.maxDistanceMiles) {
-        score += (requirements.maxDistanceMiles - candidate.distanceMiles);
+      // Distance penalty (closer is better, but exact address is never exposed)
+      if (candidate.distanceMiles <= maxDist) {
+        score += (maxDist - candidate.distanceMiles);
       } else {
-        score -= 100; // Out of range
+        score -= 100; // Out of range penalty
       }
 
-      // Rating bonus
-      score += (candidate.rating * 5);
+      // Vetted community rating bonus
+      score += ((candidate.rating || 0) * 5);
 
       return { candidate, score };
     });
 
     // 3. Ranking & Selection
     return scoredCandidates
-      .filter(item => item.score > 0) // Must have at least basic compatibility
+      .filter(item => item.score > 0) // Must maintain positive net compatibility
       .sort((a, b) => b.score - a.score)
       .slice(0, limit)
       .map(item => item.candidate);
