@@ -89,6 +89,51 @@ describe('SafetyEngine', () => {
     expect(result.reason).toContain('off-platform');
   });
 
+  it('should block unauthorized remote desktop access attempts', () => {
+    const result = SafetyEngine.evaluateMessage({
+      ...baseMessage,
+      content: 'Please download AnyDesk or TeamViewer so I can take remote control of your PC.',
+    });
+    expect(result.riskLevel).toBe('BLOCK');
+    expect(result.reason).toContain('remote computer access');
+  });
+
+  it('should block legal, deed, or inheritance manipulation', () => {
+    const result = SafetyEngine.evaluateMessage({
+      ...baseMessage,
+      content: 'You should sign over the deed to your house or grant me power of attorney.',
+    });
+    expect(result.riskLevel).toBe('BLOCK');
+    expect(result.reason).toContain('legal or inheritance');
+  });
+
+  it('should block solicitation of controlled medications or prescription pain pills', () => {
+    const result = SafetyEngine.evaluateMessage({
+      ...baseMessage,
+      content: 'Can you sell your medication or give me your pain pills?',
+    });
+    expect(result.riskLevel).toBe('BLOCK');
+    expect(result.reason).toContain('prescription medications');
+  });
+
+  it('should block sweepstakes advance fee scams', () => {
+    const result = SafetyEngine.evaluateMessage({
+      ...baseMessage,
+      content: 'You won the lottery! Pay a small processing fee to collect your prize.',
+    });
+    expect(result.riskLevel).toBe('BLOCK');
+    expect(result.reason).toContain('lottery scams');
+  });
+
+  it('should block utility disconnection extortion threats', () => {
+    const result = SafetyEngine.evaluateMessage({
+      ...baseMessage,
+      content: 'Your power will be cut off unless you pay your utility immediately.',
+    });
+    expect(result.riskLevel).toBe('BLOCK');
+    expect(result.reason).toContain('utility disconnection');
+  });
+
   it('should ignore restricted terms if sender is elderly (not a volunteer)', () => {
     const result = SafetyEngine.evaluateMessage({
       ...baseMessage,
@@ -96,5 +141,33 @@ describe('SafetyEngine', () => {
       content: 'I am not sure how to find my password.',
     });
     expect(result.riskLevel).toBe('SAFE');
+  });
+
+  it('should be resilient against ReDoS attacks with pathological repetitive strings', () => {
+    // Construct pathological repetitive input designed to trigger polynomial backtracking in vulnerable regexes
+    const pathologicalInput = '1234-'.repeat(2000) + '9999';
+    const startTime = performance.now();
+    const result = SafetyEngine.evaluateMessage({
+      ...baseMessage,
+      content: pathologicalInput,
+    });
+    const duration = performance.now() - startTime;
+
+    // Linear evaluation must complete in under 10ms
+    expect(duration).toBeLessThan(10);
+    expect(result).toBeDefined();
+  });
+
+  it('should leverage internal caching for instant subsequent evaluations', () => {
+    const message = {
+      ...baseMessage,
+      content: 'Hello, I hope you are having a wonderful peaceful afternoon.',
+    };
+
+    const first = SafetyEngine.evaluateMessage(message);
+    const second = SafetyEngine.evaluateMessage(message);
+
+    expect(first.riskLevel).toBe('SAFE');
+    expect(second.riskLevel).toBe('SAFE');
   });
 });

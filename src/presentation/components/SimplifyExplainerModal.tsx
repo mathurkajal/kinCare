@@ -11,6 +11,7 @@ import {
   BookOpen
 } from 'lucide-react';
 import { SupportedLanguage } from '../../shared/types';
+import { apiClient } from '../../infrastructure/services/apiClient';
 
 interface SimplifyExplainerModalProps {
   isOpen: boolean;
@@ -62,16 +63,11 @@ export const SimplifyExplainerModal: React.FC<SimplifyExplainerModalProps> = ({
     setResult(null);
 
     try {
-      const res = await fetch('/api/simplify-text', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          rawText: text,
-          documentType: type,
-          targetLanguage: language,
-        }),
+      const data = await apiClient.simplifyText({
+        rawText: text,
+        documentType: type,
+        targetLanguage: language,
       });
-      const data = await res.json();
       setResult(data);
     } catch (err) {
       console.error(err);

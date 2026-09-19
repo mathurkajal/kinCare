@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Navbar } from './components/Navbar';
 import { SeniorView } from './components/SeniorView';
 import { VolunteerView } from './components/VolunteerView';
@@ -6,136 +6,86 @@ import { ProfessionalView } from './components/ProfessionalView';
 import { GuardianView } from './components/GuardianView';
 import { TrustedPeopleView } from './components/TrustedPeopleView';
 import { SeniorSettingsView } from './components/SeniorSettingsView';
-import { CompanionChatModal } from './components/CompanionChatModal';
-import { RecordStoryModal } from './components/RecordStoryModal';
-import { RequestHelpModal } from './components/RequestHelpModal';
-import { GoldenWishModal } from './components/GoldenWishModal';
-import { EmergencySOSModal } from './components/EmergencySOSModal';
-import { SafetyProtocolModal } from './components/SafetyProtocolModal';
-import { VisitVerificationModal } from './components/VisitVerificationModal';
-import { HandsFreeVoiceOverlay } from './components/HandsFreeVoiceOverlay';
 import { ReadAloudPlayer } from './components/ReadAloudPlayer';
 import { OneHandBottomDock } from './components/OneHandBottomDock';
-import { ScamShieldModal } from './components/ScamShieldModal';
-import { SimplifyExplainerModal } from './components/SimplifyExplainerModal';
-import { VerificationDrawerModal } from './components/VerificationDrawerModal';
-import { CommunityReportModal } from './components/CommunityReportModal';
 
-import {
-  INITIAL_SENIORS,
-  INITIAL_VOLUNTEERS,
-  INITIAL_PROFESSIONALS,
-  INITIAL_REQUESTS,
-  INITIAL_GOLDEN_WISHES,
-  INITIAL_LIFE_STORIES,
-  INITIAL_AUDIT_LOGS,
-} from '../infrastructure/testing/mockData';
+import { useAccessibility } from './hooks/useAccessibility';
+import { useElderData } from './hooks/useElderData';
+
 import { 
   UserRole, 
-  CareRequest, 
-  GoldenWish, 
-  LifeStoryChapter, 
-  VisitAuditLog,
   SeniorNavSection,
-  HandPreference,
-  SupportedLanguage,
   ProactiveSuggestion,
-  CommunityReport
 } from '../shared/types';
+
+// Code-Splitting & Lazy Loading for Modals: Optimizes initial bundle size and FCP/TTI efficiency
+const CompanionChatModal = React.lazy(() => import('./components/CompanionChatModal').then(m => ({ default: m.CompanionChatModal })));
+const RecordStoryModal = React.lazy(() => import('./components/RecordStoryModal').then(m => ({ default: m.RecordStoryModal })));
+const RequestHelpModal = React.lazy(() => import('./components/RequestHelpModal').then(m => ({ default: m.RequestHelpModal })));
+const GoldenWishModal = React.lazy(() => import('./components/GoldenWishModal').then(m => ({ default: m.GoldenWishModal })));
+const EmergencySOSModal = React.lazy(() => import('./components/EmergencySOSModal').then(m => ({ default: m.EmergencySOSModal })));
+const SafetyProtocolModal = React.lazy(() => import('./components/SafetyProtocolModal').then(m => ({ default: m.SafetyProtocolModal })));
+const VisitVerificationModal = React.lazy(() => import('./components/VisitVerificationModal').then(m => ({ default: m.VisitVerificationModal })));
+const HandsFreeVoiceOverlay = React.lazy(() => import('./components/HandsFreeVoiceOverlay').then(m => ({ default: m.HandsFreeVoiceOverlay })));
+const ScamShieldModal = React.lazy(() => import('./components/ScamShieldModal').then(m => ({ default: m.ScamShieldModal })));
+const SimplifyExplainerModal = React.lazy(() => import('./components/SimplifyExplainerModal').then(m => ({ default: m.SimplifyExplainerModal })));
+const VerificationDrawerModal = React.lazy(() => import('./components/VerificationDrawerModal').then(m => ({ default: m.VerificationDrawerModal })));
+const CommunityReportModal = React.lazy(() => import('./components/CommunityReportModal').then(m => ({ default: m.CommunityReportModal })));
 
 export default function App() {
   const [currentRole, setCurrentRole] = useState<UserRole>('elderly');
   const [seniorNavSection, setSeniorNavSection] = useState<SeniorNavSection>('home');
-  const [fontScale, setFontScale] = useState<'standard' | 'large' | 'xlarge'>('large');
-  const [isVoiceActive, setIsVoiceActive] = useState(false);
-  
-  // Accessibility & Interaction preferences (Requirements 5, 8, 12, 13)
-  const [isHandsFreeActive, setIsHandsFreeActive] = useState(false);
-  const [handPreference, setHandPreference] = useState<HandPreference>('both');
-  const [isOneHandMode, setIsOneHandMode] = useState(false);
-  const [language, setLanguage] = useState<SupportedLanguage>('en');
-  const [highContrast, setHighContrast] = useState(false);
-  const [reducedMotion, setReducedMotion] = useState(false);
-  const [privacyShield, setPrivacyShield] = useState(true);
 
-  // Synchronize accessibility styles to root
-  useEffect(() => {
-    if (highContrast) {
-      document.documentElement.classList.add('high-contrast');
-    } else {
-      document.documentElement.classList.remove('high-contrast');
-    }
-  }, [highContrast]);
+  // Accessibility State & Synchronization Hook
+  const {
+    fontScale,
+    setFontScale,
+    isVoiceActive,
+    setIsVoiceActive,
+    isHandsFreeActive,
+    setIsHandsFreeActive,
+    handPreference,
+    setHandPreference,
+    isOneHandMode,
+    setIsOneHandMode,
+    language,
+    setLanguage,
+    highContrast,
+    setHighContrast,
+    reducedMotion,
+    setReducedMotion,
+    privacyShield,
+    setPrivacyShield,
+  } = useAccessibility();
 
-  useEffect(() => {
-    if (reducedMotion) {
-      document.documentElement.classList.add('reduced-motion');
-    } else {
-      document.documentElement.classList.remove('reduced-motion');
-    }
-  }, [reducedMotion]);
+  // Domain State & Business Handlers Hook
+  const {
+    senior,
+    volunteer,
+    professional,
+    requests,
+    setRequests,
+    wishes,
+    stories,
+    auditLogs,
+    proactiveSuggestions,
+    careNotes,
+    setCareNotes,
+    checkInToday,
+    resetCheckIn,
+    saveStory,
+    createRequest,
+    createWish,
+    pledgeWish,
+    dismissSuggestion,
+    completeVisit,
+  } = useElderData();
 
   const [readAloudState, setReadAloudState] = useState<{ isOpen: boolean; text: string; pageTitle: string }>({
     isOpen: false,
     text: '',
     pageTitle: '',
   });
-
-  // Persistent-like application state
-  const [senior, setSenior] = useState(INITIAL_SENIORS[0]);
-  const [volunteer, setVolunteer] = useState(INITIAL_VOLUNTEERS[0]);
-  const [professional, setProfessional] = useState(INITIAL_PROFESSIONALS[0]);
-  const [requests, setRequests] = useState<CareRequest[]>(INITIAL_REQUESTS);
-  const [wishes, setWishes] = useState<GoldenWish[]>(INITIAL_GOLDEN_WISHES);
-  const [stories, setStories] = useState<LifeStoryChapter[]>(INITIAL_LIFE_STORIES);
-  const [auditLogs, setAuditLogs] = useState<VisitAuditLog[]>(INITIAL_AUDIT_LOGS);
-  const [reports, setReports] = useState<CommunityReport[]>([]);
-
-  // Proactive Gentle Assistance Suggestions (Suggest, Not Assume)
-  const [proactiveSuggestions, setProactiveSuggestions] = useState<ProactiveSuggestion[]>([
-    {
-      id: 'sug-1',
-      type: 'hydration',
-      title: 'Warm Afternoon in Oakridge (78°F)',
-      message: 'It is a warm, sunny afternoon. Would you like a gentle reminder to sip a cool glass of water or herbal tea on the porch?',
-      actionLabel: 'Sip Water & Relax',
-      actionType: 'learn_more',
-      dismissLabel: 'I am hydrated',
-      urgency: 'gentle',
-      timestamp: '2:15 PM',
-    },
-    {
-      id: 'sug-2',
-      type: 'upcoming_visit',
-      title: 'Volunteer Visit Tomorrow at 3:00 PM',
-      message: 'David Chen is scheduled to bring fresh community groceries and share tea tomorrow. Remember to ask for your secret arrival PIN 4821 before opening your door.',
-      actionLabel: 'Review David’s Photo & PIN',
-      actionType: 'open_visit_details',
-      dismissLabel: 'Got it, thank you',
-      urgency: 'gentle',
-      timestamp: 'Yesterday',
-    },
-    {
-      id: 'sug-3',
-      type: 'activity',
-      title: 'Record a New Family Memory Chapter',
-      message: 'Your grandchildren loved your story about the 1964 World’s Fair. Would you like to record another 3-minute oral memory today?',
-      actionLabel: 'Record a Memory',
-      actionType: 'accept_help',
-      dismissLabel: 'Maybe later',
-      urgency: 'gentle',
-      timestamp: 'Today',
-    },
-  ]);
-  const [careNotes, setCareNotes] = useState([
-    {
-      id: 'note-1',
-      seniorName: 'Margaret Higgins',
-      author: 'Sarah Jenkins, RN, BSN (Lic #RN-88412)',
-      text: 'Conducted fall-risk threshold inspection. Replaced loose hallway runner with non-skid backing. Sitting-to-standing balance is strong. Recommended daily 10-minute porch walks with her cane.',
-      date: 'Sep 16, 2026',
-    },
-  ]);
 
   // Modal visibility states
   const [isTalkModalOpen, setIsTalkModalOpen] = useState(false);
@@ -150,36 +100,19 @@ export default function App() {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [selectedVisitRequestId, setSelectedVisitRequestId] = useState<string | null>(null);
 
-  const handleAcceptSuggestion = (suggestion: ProactiveSuggestion) => {
-    setProactiveSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
-    if (suggestion.actionType === 'open_visit_details') {
-      setIsSafetyProtocolOpen(true);
-    } else if (suggestion.actionType === 'accept_help') {
-      setIsStoryModalOpen(true);
-    } else {
-      handleSpeakText(`You accepted: ${suggestion.title}. Thank you, ${senior.preferredName}.`);
-    }
-  };
-
-  const handleDismissSuggestion = (id: string) => {
-    setProactiveSuggestions(prev => prev.filter(s => s.id !== id));
-  };
-
-  const handleCommunityReport = (report: CommunityReport) => {
-    setReports(prev => [report, ...prev]);
-  };
-
   const handleToggleVoice = () => {
-    const newState = !isVoiceActive;
-    setIsVoiceActive(newState);
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      if (newState) {
-        const utter = new SpeechSynthesisUtterance("Voice reading mode enabled. You can now tap any section or button to listen to it read aloud at a gentle pace.");
-        utter.rate = 0.88;
-        window.speechSynthesis.speak(utter);
+    setIsVoiceActive((prev) => {
+      const newState = !prev;
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        if (newState) {
+          const utter = new SpeechSynthesisUtterance("Voice reading mode enabled. You can now tap any section or button to listen to it read aloud at a gentle pace.");
+          utter.rate = 0.88;
+          window.speechSynthesis.speak(utter);
+        }
       }
-    }
+      return newState;
+    });
   };
 
   const handleSpeakText = (text: string) => {
@@ -189,6 +122,17 @@ export default function App() {
       utter.rate = 0.88;
       utter.pitch = 1.0;
       window.speechSynthesis.speak(utter);
+    }
+  };
+
+  const handleAcceptSuggestion = (suggestion: ProactiveSuggestion) => {
+    dismissSuggestion(suggestion.id);
+    if (suggestion.actionType === 'open_visit_details') {
+      setIsSafetyProtocolOpen(true);
+    } else if (suggestion.actionType === 'accept_help') {
+      setIsStoryModalOpen(true);
+    } else {
+      handleSpeakText(`You accepted: ${suggestion.title}. Thank you, ${senior.preferredName}.`);
     }
   };
 
@@ -219,33 +163,12 @@ export default function App() {
     });
   };
 
-  // Daily check-in handler
-  const handleCheckInToday = (mood: 'happy' | 'peaceful' | 'tired' | 'lonely' | 'need_talk') => {
-    setSenior(prev => ({
-      ...prev,
-      dailyCheckIn: {
-        checkedInToday: true,
-        lastCheckInTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        mood,
-        checkInStreak: prev.dailyCheckIn.checkInStreak + 1,
-      },
-    }));
-
-    handleSpeakText(`Thank you for checking in, ${senior.preferredName}. Your son David has received your morning message.`);
-  };
-
-  // Reversible Undo handler for accidental tap
-  const handleResetCheckIn = () => {
-    setSenior(prev => ({
-      ...prev,
-      dailyCheckIn: {
-        checkedInToday: false,
-        lastCheckInTime: undefined,
-        mood: undefined,
-        checkInStreak: Math.max(0, prev.dailyCheckIn.checkInStreak - 1),
-      },
-    }));
-    handleSpeakText(`Morning check-in has been reset. You can tap any option again whenever you are ready.`);
+  const handleSeniorNavChange = (section: SeniorNavSection) => {
+    setSeniorNavSection(section);
+    if (section === 'talk') setIsTalkModalOpen(true);
+    else if (section === 'help') setIsHelpModalOpen(true);
+    else if (section === 'wishes') setIsWishModalOpen(true);
+    else if (section === 'stories') setIsStoryModalOpen(true);
   };
 
   // Accept volunteer request
@@ -284,38 +207,6 @@ export default function App() {
     );
   };
 
-  // Create care request
-  const handleCreateRequest = (newReq: CareRequest) => {
-    setRequests(prev => [newReq, ...prev]);
-  };
-
-  // Create golden wish
-  const handleCreateWish = (newWish: GoldenWish) => {
-    setWishes(prev => [newWish, ...prev]);
-  };
-
-  // Pledge wish
-  const handlePledgeWish = (wishId: string, backerName?: string) => {
-    setWishes(prev =>
-      prev.map(w => {
-        if (w.id === wishId) {
-          return {
-            ...w,
-            status: 'fulfilled' as const,
-            fulfilledByVolunteerName: backerName || 'David Chen (Verified Neighbor)',
-          };
-        }
-        return w;
-      })
-    );
-  };
-
-  // Save story chapter
-  const handleSaveStory = (story: LifeStoryChapter) => {
-    setStories(prev => [story, ...prev]);
-  };
-
-  // Add verified clinical note
   const handleAddCareNote = (seniorName: string, text: string) => {
     const newNote = {
       id: `note-${Date.now()}`,
@@ -325,14 +216,6 @@ export default function App() {
       date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
     };
     setCareNotes(prev => [newNote, ...prev]);
-  };
-
-  const handleSeniorNavChange = (section: SeniorNavSection) => {
-    setSeniorNavSection(section);
-    if (section === 'talk') setIsTalkModalOpen(true);
-    else if (section === 'help') setIsHelpModalOpen(true);
-    else if (section === 'wishes') setIsWishModalOpen(true);
-    else if (section === 'stories') setIsStoryModalOpen(true);
   };
 
   const activeVisitRequest = requests.find(r => r.id === selectedVisitRequestId) || requests[0];
@@ -356,7 +239,7 @@ export default function App() {
         language={language}
         onLanguageChange={setLanguage}
         highContrast={highContrast}
-        onToggleHighContrast={() => setHighContrast(!highContrast)}
+        onToggleHighContrast={() => setHighContrast(prev => !prev)}
         onOpenScamShield={() => setIsScamShieldOpen(true)}
       />
 
@@ -380,17 +263,17 @@ export default function App() {
                 handPreference={handPreference}
                 onHandPreferenceChange={setHandPreference}
                 isOneHandMode={isOneHandMode}
-                onToggleOneHandMode={() => setIsOneHandMode(!isOneHandMode)}
+                onToggleOneHandMode={() => setIsOneHandMode(prev => !prev)}
                 isHandsFreeActive={isHandsFreeActive}
-                onToggleHandsFree={() => setIsHandsFreeActive(!isHandsFreeActive)}
+                onToggleHandsFree={() => setIsHandsFreeActive(prev => !prev)}
                 language={language}
                 onLanguageChange={setLanguage}
                 highContrast={highContrast}
-                onToggleHighContrast={() => setHighContrast(!highContrast)}
+                onToggleHighContrast={() => setHighContrast(prev => !prev)}
                 reducedMotion={reducedMotion}
-                onToggleReducedMotion={() => setReducedMotion(!reducedMotion)}
+                onToggleReducedMotion={() => setReducedMotion(prev => !prev)}
                 privacyShield={privacyShield}
-                onTogglePrivacyShield={() => setPrivacyShield(!privacyShield)}
+                onTogglePrivacyShield={() => setPrivacyShield(prev => !prev)}
                 onOpenScamShield={() => setIsScamShieldOpen(true)}
                 onOpenSimplifyModal={() => setIsSimplifyModalOpen(true)}
                 onOpenVerificationModal={() => setIsVerificationModalOpen(true)}
@@ -406,9 +289,9 @@ export default function App() {
                 privacyShield={privacyShield}
                 proactiveSuggestions={proactiveSuggestions}
                 onAcceptSuggestion={handleAcceptSuggestion}
-                onDismissSuggestion={handleDismissSuggestion}
-                onCheckInToday={handleCheckInToday}
-                onResetCheckIn={handleResetCheckIn}
+                onDismissSuggestion={dismissSuggestion}
+                onCheckInToday={checkInToday}
+                onResetCheckIn={resetCheckIn}
                 onOpenTalkModal={() => {
                   setSeniorNavSection('talk');
                   setIsTalkModalOpen(true);
@@ -444,7 +327,7 @@ export default function App() {
             wishes={wishes}
             onAcceptRequest={handleAcceptRequest}
             onOpenVisitPinModal={(reqId) => setSelectedVisitRequestId(reqId)}
-            onPledgeWish={(wishId) => handlePledgeWish(wishId)}
+            onPledgeWish={(wishId) => pledgeWish(wishId)}
             onOpenSafetyCode={() => setIsSafetyProtocolOpen(true)}
           />
         )}
@@ -481,6 +364,7 @@ export default function App() {
           </div>
           <div className="flex items-center gap-4">
             <button
+              type="button"
               onClick={() => handleTriggerReadCurrentPage()}
               className="text-[#1E4D3B] hover:underline cursor-pointer font-bold"
             >
@@ -488,6 +372,7 @@ export default function App() {
             </button>
             <span className="text-[#D3C4B0]">•</span>
             <button
+              type="button"
               onClick={() => setIsSafetyProtocolOpen(true)}
               className="text-[#1E4D3B] hover:underline cursor-pointer font-bold"
             >
@@ -497,7 +382,7 @@ export default function App() {
         </div>
       </footer>
 
-      {/* Optional One-Hand Bottom Dock on Mobile (Requirement 13) */}
+      {/* Optional One-Hand Bottom Dock on Mobile */}
       {(isOneHandMode || currentRole === 'elderly') && (
         <OneHandBottomDock
           handPreference={handPreference}
@@ -512,10 +397,10 @@ export default function App() {
         />
       )}
 
-      {/* Hands-Free Voice Assistant Controller & Floating Overlay (Requirements 5, 6, 7) */}
+      {/* Hands-Free Voice Assistant Controller & Floating Overlay */}
       <HandsFreeVoiceOverlay
         isHandsFreeActive={isHandsFreeActive}
-        onToggleHandsFree={() => setIsHandsFreeActive(!isHandsFreeActive)}
+        onToggleHandsFree={() => setIsHandsFreeActive(prev => !prev)}
         onNavigateHome={() => handleSeniorNavChange('home')}
         onOpenTalk={() => {
           setSeniorNavSection('talk');
@@ -541,7 +426,7 @@ export default function App() {
         guardianName={senior.guardianContact.name}
       />
 
-      {/* Read-Aloud Mode Player (Requirement 8) */}
+      {/* Read-Aloud Mode Player */}
       <ReadAloudPlayer
         isOpen={readAloudState.isOpen}
         onClose={() => setReadAloudState(prev => ({ ...prev, isOpen: false }))}
@@ -549,110 +434,110 @@ export default function App() {
         pageTitle={readAloudState.pageTitle}
       />
 
-      {/* Modals */}
-      <CompanionChatModal
-        isOpen={isTalkModalOpen}
-        onClose={() => {
-          setIsTalkModalOpen(false);
-          if (seniorNavSection === 'talk') setSeniorNavSection('home');
-        }}
-        senior={senior}
-        onRequestHumanCompanion={() => {
-          setIsTalkModalOpen(false);
-          setSeniorNavSection('help');
-          setIsHelpModalOpen(true);
-        }}
-      />
+      {/* Lazy-Loaded Modals with Suspense */}
+      <React.Suspense fallback={null}>
+        <CompanionChatModal
+          isOpen={isTalkModalOpen}
+          onClose={() => {
+            setIsTalkModalOpen(false);
+            if (seniorNavSection === 'talk') setSeniorNavSection('home');
+          }}
+          senior={senior}
+          onRequestHumanCompanion={() => {
+            setIsTalkModalOpen(false);
+            setSeniorNavSection('help');
+            setIsHelpModalOpen(true);
+          }}
+        />
 
-      <RecordStoryModal
-        isOpen={isStoryModalOpen}
-        onClose={() => {
-          setIsStoryModalOpen(false);
-          if (seniorNavSection === 'stories') setSeniorNavSection('home');
-        }}
-        senior={senior}
-        onSaveStory={handleSaveStory}
-      />
+        <RecordStoryModal
+          isOpen={isStoryModalOpen}
+          onClose={() => {
+            setIsStoryModalOpen(false);
+            if (seniorNavSection === 'stories') setSeniorNavSection('home');
+          }}
+          senior={senior}
+          onSaveStory={saveStory}
+        />
 
-      <RequestHelpModal
-        isOpen={isHelpModalOpen}
-        onClose={() => {
-          setIsHelpModalOpen(false);
-          if (seniorNavSection === 'help') setSeniorNavSection('home');
-        }}
-        senior={senior}
-        onCreateRequest={handleCreateRequest}
-      />
+        <RequestHelpModal
+          isOpen={isHelpModalOpen}
+          onClose={() => {
+            setIsHelpModalOpen(false);
+            if (seniorNavSection === 'help') setSeniorNavSection('home');
+          }}
+          senior={senior}
+          onCreateRequest={createRequest}
+        />
 
-      <GoldenWishModal
-        isOpen={isWishModalOpen}
-        onClose={() => {
-          setIsWishModalOpen(false);
-          if (seniorNavSection === 'wishes') setSeniorNavSection('home');
-        }}
-        senior={senior}
-        wishes={wishes}
-        onCreateWish={handleCreateWish}
-        onPledgeWish={(wishId) => handlePledgeWish(wishId)}
-      />
+        <GoldenWishModal
+          isOpen={isWishModalOpen}
+          onClose={() => {
+            setIsWishModalOpen(false);
+            if (seniorNavSection === 'wishes') setSeniorNavSection('home');
+          }}
+          senior={senior}
+          wishes={wishes}
+          onCreateWish={createWish}
+          onPledgeWish={(wishId) => pledgeWish(wishId)}
+        />
 
-      <EmergencySOSModal
-        isOpen={isSOSModalOpen}
-        onClose={() => setIsSOSModalOpen(false)}
-        senior={senior}
-      />
+        <EmergencySOSModal
+          isOpen={isSOSModalOpen}
+          onClose={() => setIsSOSModalOpen(false)}
+          senior={senior}
+        />
 
-      <SafetyProtocolModal
-        isOpen={isSafetyProtocolOpen}
-        onClose={() => setIsSafetyProtocolOpen(false)}
-      />
+        <SafetyProtocolModal
+          isOpen={isSafetyProtocolOpen}
+          onClose={() => setIsSafetyProtocolOpen(false)}
+        />
 
-      <VisitVerificationModal
-        isOpen={!!selectedVisitRequestId}
-        onClose={() => setSelectedVisitRequestId(null)}
-        request={activeVisitRequest}
-        senior={senior}
-        onCompleteVisit={(reqId: string, notes: string) => {
-          setRequests(prev =>
-            prev.map(r => (r.id === reqId ? { ...r, status: 'completed' } : r))
-          );
-          setSelectedVisitRequestId(null);
-        }}
-      />
+        <VisitVerificationModal
+          isOpen={!!selectedVisitRequestId}
+          onClose={() => setSelectedVisitRequestId(null)}
+          request={activeVisitRequest}
+          senior={senior}
+          onCompleteVisit={(reqId: string, notes: string) => {
+            completeVisit(reqId, notes);
+            setSelectedVisitRequestId(null);
+          }}
+        />
 
-      {/* Elder Scam & Financial Protection Shield */}
-      <ScamShieldModal
-        isOpen={isScamShieldOpen}
-        onClose={() => setIsScamShieldOpen(false)}
-        guardianPhone={senior.guardianContact.phone}
-        guardianName={senior.guardianContact.name}
-        onOpenReportModal={() => {
-          setIsScamShieldOpen(false);
-          setIsReportModalOpen(true);
-        }}
-      />
+        {/* Elder Scam & Financial Protection Shield */}
+        <ScamShieldModal
+          isOpen={isScamShieldOpen}
+          onClose={() => setIsScamShieldOpen(false)}
+          guardianPhone={senior.guardianContact.phone}
+          guardianName={senior.guardianContact.name}
+          onOpenReportModal={() => {
+            setIsScamShieldOpen(false);
+            setIsReportModalOpen(true);
+          }}
+        />
 
-      {/* Jargon Simplifier Explainer Modal */}
-      <SimplifyExplainerModal
-        isOpen={isSimplifyModalOpen}
-        onClose={() => setIsSimplifyModalOpen(false)}
-        language={language}
-      />
+        {/* Jargon Simplifier Explainer Modal */}
+        <SimplifyExplainerModal
+          isOpen={isSimplifyModalOpen}
+          onClose={() => setIsSimplifyModalOpen(false)}
+          language={language}
+        />
 
-      {/* Trust & Safety Verification Standards Guide */}
-      <VerificationDrawerModal
-        isOpen={isVerificationModalOpen}
-        onClose={() => setIsVerificationModalOpen(false)}
-        seniorPin={senior.safetyPin}
-      />
+        {/* Trust & Safety Verification Standards Guide */}
+        <VerificationDrawerModal
+          isOpen={isVerificationModalOpen}
+          onClose={() => setIsVerificationModalOpen(false)}
+          seniorPin={senior.safetyPin}
+        />
 
-      {/* Respect & Safety Reporting Tool */}
-      <CommunityReportModal
-        isOpen={isReportModalOpen}
-        onClose={() => setIsReportModalOpen(false)}
-        seniorName={senior.preferredName}
-        guardianName={senior.guardianContact.name}
-      />
+        {/* Respect & Safety Reporting Tool */}
+        <CommunityReportModal
+          isOpen={isReportModalOpen}
+          onClose={() => setIsReportModalOpen(false)}
+          seniorName={senior.preferredName}
+          guardianName={senior.guardianContact.name}
+        />
+      </React.Suspense>
     </div>
   );
 }

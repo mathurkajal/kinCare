@@ -14,6 +14,7 @@ import {
   Flag
 } from 'lucide-react';
 import { ScamCheckResult } from '../../shared/types';
+import { apiClient } from '../../infrastructure/services/apiClient';
 
 interface ScamShieldModalProps {
   isOpen: boolean;
@@ -69,15 +70,10 @@ export const ScamShieldModal: React.FC<ScamShieldModalProps> = ({
     setResult(null);
 
     try {
-      const res = await fetch('/api/check-scam', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          textToCheck: textToScan,
-          callerDetails: callerToScan,
-        }),
+      const data = await apiClient.checkScam({
+        textToCheck: textToScan,
+        callerDetails: callerToScan,
       });
-      const data = await res.json();
       setResult(data);
     } catch (err) {
       console.error(err);

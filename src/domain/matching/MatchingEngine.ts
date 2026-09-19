@@ -7,12 +7,14 @@ export interface CompanionCandidate {
   interests: string[];
   distanceMiles: number; // Approximate
   rating: number;
+  specialCapabilities?: string[]; // e.g. 'mobility_assistance', 'dementia_friendly', 'sign_language'
 }
 
 export interface ElderRequirements {
   preferredLanguages: string[];
   interests: string[];
   maxDistanceMiles: number;
+  requiredCapabilities?: string[];
 }
 
 export class MatchingEngine {
@@ -20,7 +22,7 @@ export class MatchingEngine {
    * Safely matches an elder with potential volunteers.
    * Safety eligibility check strictly gates compatibility scoring:
    * Only candidates with 'APPROVED' verification state are scored.
-   * Time Complexity: O(N log N) where N is eligible candidates.
+   * Uses O(1) Set lookups for rapid multi-attribute matching and bounded top-K ranking.
    */
   public static generateCandidates(
     requirements: ElderRequirements,
@@ -31,9 +33,12 @@ export class MatchingEngine {
       return [];
     }
 
-    const preferredLangs = requirements?.preferredLanguages || [];
-    const elderInterests = requirements?.interests || [];
+    // Convert requirements into O(1) lookup Sets to avoid O(N*M) nested loops
+    const preferredLangSet = new Set(requirements?.preferredLanguages || []);
+    const elderInterestSet = new Set(requirements?.interests || []);
+    const requiredCapSet = new Set(requirements?.requiredCapabilities || []);
     const maxDist = Math.max(0, requirements?.maxDistanceMiles ?? 10);
+    const hasRequiredCaps = requiredCapSet.size > 0;
 
     // 1. Eligibility Filtering (Strict Safety Check - zero tolerance for unverified volunteers)
     const eligiblePool = pool.filter(candidate => 
@@ -44,23 +49,39 @@ export class MatchingEngine {
       return [];
     }
 
-    // 2. Compatibility Scoring
-    const scoredCandidates = eligiblePool.map(candidate => {
+    // 2. Compatibility Scoring with O(1) Set operations
+    const scoredCandidates: { candidate: CompanionCandidate; score: number }[] = [];
+
+    for (let i = 0; i < eligiblePool.length; i++) {
+      const candidate = eligiblePool[i];
       let score = 0;
       const candidateLangs = candidate.languages || [];
       const candidateInterests = candidate.interests || [];
-      
+      const candidateCaps = candidate.specialCapabilities || [];
+
       // Language match is heavily weighted (comfort and comprehension)
-      const hasLanguageMatch = candidateLangs.some(lang => preferredLangs.includes(lang));
+      let hasLanguageMatch = false;
+      for (let j = 0; j < candidateLangs.length; j++) {
+        if (preferredLangSet.has(candidateLangs[j])) {
+          hasLanguageMatch = true;
+          break;
+        }
+      }
       if (hasLanguageMatch) score += 50;
 
       // Shared interests match (companionship rapport)
-      const sharedInterests = candidateInterests.filter(int => elderInterests.includes(int));
-      score += (sharedInterests.length * 10);
+      let sharedCount = 0;
+      for (let j = 0; j < candidateInterests.length; j++) {
+        if (elderInterestSet.has(candidateInterests[j])) {
+          sharedCount++;
+        }
+      }
+      score += (sharedCount * 10);
 
       // Distance penalty (closer is better, but exact address is never exposed)
-      if (candidate.distanceMiles <= maxDist) {
-        score += (maxDist - candidate.distanceMiles);
+      const distance = Math.max(0, candidate.distanceMiles || 0);
+      if (distance <= maxDist) {
+        score += (maxDist - distance);
       } else {
         score -= 100; // Out of range penalty
       }
@@ -68,14 +89,35 @@ export class MatchingEngine {
       // Vetted community rating bonus
       score += ((candidate.rating || 0) * 5);
 
-      return { candidate, score };
-    });
+      // Special capability accommodations bonus
+      if (hasRequiredCaps) {
+        let matchedCapsCount = 0;
+        for (let j = 0; j < candidateCaps.length; j++) {
+          if (requiredCapSet.has(candidateCaps[j])) {
+            matchedCapsCount++;
+          }
+        }
+        score += (matchedCapsCount * 30);
+        if (matchedCapsCount < requiredCapSet.size) {
+          score -= 40 * (requiredCapSet.size - matchedCapsCount);
+        }
+      }
 
-    // 3. Ranking & Selection
-    return scoredCandidates
-      .filter(item => item.score > 0) // Must maintain positive net compatibility
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit)
-      .map(item => item.candidate);
+      // Must maintain positive net compatibility
+      if (score > 0) {
+        scoredCandidates.push({ candidate, score });
+      }
+    }
+
+    // 3. Top-K Selection
+    scoredCandidates.sort((a, b) => b.score - a.score);
+
+    const results: CompanionCandidate[] = [];
+    const maxResults = Math.min(limit, scoredCandidates.length);
+    for (let i = 0; i < maxResults; i++) {
+      results.push(scoredCandidates[i].candidate);
+    }
+
+    return results;
   }
 }

@@ -12,6 +12,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { SeniorProfile } from '../../shared/types';
+import { useEscapeKey } from '../../shared/utils/useEscapeKey';
 
 interface EmergencySOSModalProps {
   isOpen: boolean;
@@ -24,20 +25,19 @@ export const EmergencySOSModal: React.FC<EmergencySOSModalProps> = ({
   onClose,
   senior,
 }) => {
-  if (!isOpen) return null;
-
   const [countdown, setCountdown] = useState(6);
   const [isPaused, setIsPaused] = useState(false);
   const [dispatched, setDispatched] = useState(false);
 
   useEffect(() => {
-    if (countdown > 0 && !dispatched && !isPaused) {
-      const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
-      return () => clearTimeout(timer);
-    } else if (countdown === 0 && !dispatched) {
-      triggerDispatch();
+    if (isOpen) {
+      setCountdown(6);
+      setIsPaused(false);
+      setDispatched(false);
     }
-  }, [countdown, dispatched, isPaused]);
+  }, [isOpen]);
+
+  useEscapeKey(onClose, isOpen);
 
   const triggerDispatch = () => {
     setDispatched(true);
@@ -50,6 +50,18 @@ export const EmergencySOSModal: React.FC<EmergencySOSModalProps> = ({
       window.speechSynthesis.speak(utter);
     }
   };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (countdown > 0 && !dispatched && !isPaused) {
+      const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (countdown === 0 && !dispatched) {
+      triggerDispatch();
+    }
+  }, [isOpen, countdown, dispatched, isPaused]);
+
+  if (!isOpen) return null;
 
   const handleCancelMistake = () => {
     if ('speechSynthesis' in window) {

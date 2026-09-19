@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { SeniorProfile } from '../../shared/types';
 import { VoiceInputReview } from './VoiceInputReview';
+import { apiClient } from '../../infrastructure/services/apiClient';
 
 interface CompanionChatModalProps {
   isOpen: boolean;
@@ -62,19 +63,13 @@ export const CompanionChatModal: React.FC<CompanionChatModalProps> = ({
     setLoading(true);
 
     try {
-      const response = await fetch('/api/companion-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: textToSend,
-          history: newHistory,
-          seniorName: senior.preferredName,
-        }),
+      const data = await apiClient.companionChat({
+        message: textToSend,
+        seniorName: senior.preferredName,
+        history: newHistory.map((m) => ({ sender: m.sender, text: m.text })),
       });
 
-      const data = await response.json();
       const reply = data.reply || `It is always a comfort to hear your voice, ${senior.preferredName}. Tell me more about that.`;
-
       setMessages(prev => [...prev, { sender: 'companion', text: reply }]);
       speakText(reply);
     } catch (err) {

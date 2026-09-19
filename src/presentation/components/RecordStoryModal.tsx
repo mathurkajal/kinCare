@@ -11,6 +11,7 @@ import {
   VolumeX
 } from 'lucide-react';
 import { SeniorProfile, LifeStoryChapter } from '../../shared/types';
+import { apiClient } from '../../infrastructure/services/apiClient';
 
 interface RecordStoryModalProps {
   isOpen: boolean;
@@ -115,18 +116,13 @@ export const RecordStoryModal: React.FC<RecordStoryModalProps> = ({
     setSynthesizing(true);
 
     try {
-      const res = await fetch('/api/transcribe-memoir', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          seniorName: senior.name,
-          theme: selectedPrompt.theme,
-          promptQuestion: selectedPrompt.question,
-          rawTranscript: transcriptText,
-        }),
+      const data = await apiClient.transcribeMemoir({
+        seniorName: senior.name,
+        theme: selectedPrompt.theme,
+        promptQuestion: selectedPrompt.question,
+        rawTranscript: transcriptText,
       });
 
-      const data = await res.json();
       setPreviewChapter({
         title: data.title,
         refinedStory: data.refinedStory,

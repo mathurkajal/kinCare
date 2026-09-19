@@ -87,4 +87,55 @@ describe('MatchingEngine', () => {
     expect(MatchingEngine.generateCandidates(sampleRequirements, [], 3)).toEqual([]);
     expect(MatchingEngine.generateCandidates(sampleRequirements, [candidateApprovedA], 0)).toEqual([]);
   });
+
+  it('boosts candidates with requested capabilities (e.g. mobility assistance)', () => {
+    const candidateWithMobility: CompanionCandidate = {
+      id: 'cand-mobility',
+      verificationState: 'APPROVED',
+      languages: ['en'],
+      interests: ['gardening'],
+      distanceMiles: 5,
+      rating: 4.5,
+      specialCapabilities: ['mobility_assistance'],
+    };
+
+    const candidateWithoutMobility: CompanionCandidate = {
+      id: 'cand-standard',
+      verificationState: 'APPROVED',
+      languages: ['en'],
+      interests: ['gardening'],
+      distanceMiles: 5,
+      rating: 4.5,
+      specialCapabilities: [],
+    };
+
+    const reqWithMobility: ElderRequirements = {
+      ...sampleRequirements,
+      requiredCapabilities: ['mobility_assistance'],
+    };
+
+    const matches = MatchingEngine.generateCandidates(reqWithMobility, [candidateWithoutMobility, candidateWithMobility], 2);
+    expect(matches[0].id).toBe('cand-mobility');
+  });
+
+  it('demonstrates high algorithmic efficiency on large candidate pools', () => {
+    // Generate 1,000 synthetic candidates to test scalability and efficiency
+    const largePool: CompanionCandidate[] = Array.from({ length: 1000 }, (_, i) => ({
+      id: `cand-${i}`,
+      verificationState: i % 2 === 0 ? 'APPROVED' : 'IDENTITY_VERIFICATION_PENDING',
+      languages: i % 3 === 0 ? ['en', 'es'] : ['fr'],
+      interests: ['gardening', 'walking', 'reading', 'cooking'],
+      distanceMiles: (i % 25) + 1,
+      rating: 4.0 + (i % 10) * 0.1,
+      specialCapabilities: i % 5 === 0 ? ['mobility_assistance'] : [],
+    }));
+
+    const startTime = performance.now();
+    const results = MatchingEngine.generateCandidates(sampleRequirements, largePool, 5);
+    const durationMs = performance.now() - startTime;
+
+    expect(results.length).toBe(5);
+    // Algorithm must run sub-15ms even for 1,000 candidates
+    expect(durationMs).toBeLessThan(15);
+  });
 });

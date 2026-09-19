@@ -1,3 +1,5 @@
+import { LruTtlCache } from '../../infrastructure/cache/LruTtlCache';
+
 export interface MessageContext {
   senderId: string;
   senderRole: 'elderly' | 'volunteer' | 'professional';
@@ -14,41 +16,68 @@ export interface SafetyResult {
 }
 
 export class SafetyEngine {
-  // Heuristic-based fraud and elder abuse defense engine.
+  // Linear-time, ReDoS-safe heuristic patterns for elder abuse prevention.
+  // Patterns avoid nested quantifiers to guarantee O(N) evaluation time.
   private static readonly RESTRICTED_PATTERNS = [
-    { pattern: /(otp|password|code|verification pin)/i, reason: 'Requesting secure credentials' },
-    { pattern: /(send money|gift card|bank account|transfer|crypto|bitcoin|western union|moneygram|\b(?:\d{4}[- ]?){3}\d{4}\b)/i, reason: 'Requesting financial transactions' },
-    { pattern: /(what is your address|where do you live exactly)/i, reason: 'Requesting exact location' },
+    { pattern: /(otp|password|code|verification pin|login credentials)/i, reason: 'Requesting secure credentials' },
+    { pattern: /(send money|gift card|bank account|transfer|crypto|bitcoin|western union|moneygram|wire transfer|zelle|venmo|cash app|\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b)/i, reason: 'Requesting financial transactions' },
+    { pattern: /(what is your address|where do you live exactly|give me your home keys)/i, reason: 'Requesting exact location' },
     { pattern: /\b\d{3}-\d{2}-\d{4}\b/, reason: 'Requesting Social Security Number' },
-    { pattern: /(arrest|police will come|jail|warrant for your arrest)/i, reason: 'Threatening or coercive language' },
+    { pattern: /(arrest|police will come|jail|warrant for your arrest|fbi will visit)/i, reason: 'Threatening or coercive language' },
+    { pattern: /(anydesk|teamviewer|quicksupport|ultraviewer|screen connect|logmein|remote control of your pc|remote access)/i, reason: 'Requesting unauthorized remote computer access' },
+    { pattern: /(power of attorney|sign over the deed|change your will|make me your beneficiary|inherit your house)/i, reason: 'Requesting legal or inheritance documents' },
+    { pattern: /(sell your medication|give me your oxy|percocet|pain pills|narcotics prescription)/i, reason: 'Requesting controlled prescription medications' },
+    { pattern: /(you won the lottery|sweepstakes prize winner|processing fee to collect your prize|tax fee before receiving millions)/i, reason: 'Promoting sweepstakes or lottery scams' },
+    { pattern: /(power will be cut off|water will be disconnected|pay your utility immediately or shut off)/i, reason: 'Simulating utility disconnection threats' },
   ];
 
+  // High-efficiency evaluation cache for identical message payloads
+  private static readonly evaluationCache = new LruTtlCache<string, SafetyResult>(500, 180_000);
+
   public static evaluateMessage(message: MessageContext): SafetyResult {
-    // We strictly evaluate messages from volunteers to elders to prevent exploitation.
-    if (message.senderRole === 'volunteer') {
-      const lowerContent = (message.content || '').toLowerCase();
-      
-      for (const rule of this.RESTRICTED_PATTERNS) {
-        if (rule.pattern.test(lowerContent)) {
-          const detail = rule.reason.split(' ').pop() || 'sensitive information';
-          return {
-            riskLevel: 'BLOCK',
-            reason: rule.reason,
-            userFacingMessage: `Message blocked to protect privacy. Volunteers are not permitted to ask for ${detail}.`
-          };
-        }
-      }
-      
-      // If attempting to move communication off-platform to avoid auditing
-      if (/(whatsapp|telegram|signal|facebook|wechat|discord)/i.test(lowerContent)) {
-        return {
-          riskLevel: 'WARNING',
-          reason: 'Attempting to move communication off-platform',
-          userFacingMessage: 'For your safety, please keep all communication on the KinCare platform.'
+    // Only messages from volunteers to elders require restriction checks
+    if (message.senderRole !== 'volunteer') {
+      return { riskLevel: 'SAFE' };
+    }
+
+    // Defensive input bounding to prevent DoS attacks and memory bloat
+    const rawContent = message.content || '';
+    const boundedContent = rawContent.length > 4000 ? rawContent.slice(0, 4000) : rawContent;
+    const lowerContent = boundedContent.toLowerCase();
+
+    // Cache check for high throughput efficiency
+    const cacheKey = `${message.senderRole}:${lowerContent}`;
+    const cached = this.evaluationCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    for (const rule of this.RESTRICTED_PATTERNS) {
+      if (rule.pattern.test(lowerContent)) {
+        const detail = rule.reason.split(' ').pop() || 'sensitive information';
+        const result: SafetyResult = {
+          riskLevel: 'BLOCK',
+          reason: rule.reason,
+          userFacingMessage: `Message blocked to protect privacy. Volunteers are not permitted to ask for ${detail}.`
         };
+        this.evaluationCache.set(cacheKey, result);
+        return result;
       }
     }
 
-    return { riskLevel: 'SAFE' };
+    // Check for off-platform communication evasion
+    if (/(whatsapp|telegram|signal|facebook|wechat|discord)/i.test(lowerContent)) {
+      const result: SafetyResult = {
+        riskLevel: 'WARNING',
+        reason: 'Attempting to move communication off-platform',
+        userFacingMessage: 'For your safety, please keep all communication on the KinCare platform.'
+      };
+      this.evaluationCache.set(cacheKey, result);
+      return result;
+    }
+
+    const safeResult: SafetyResult = { riskLevel: 'SAFE' };
+    this.evaluationCache.set(cacheKey, safeResult);
+    return safeResult;
   }
 }

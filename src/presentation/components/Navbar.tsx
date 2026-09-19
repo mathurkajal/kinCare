@@ -61,6 +61,33 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [roleMenuOpen, setRoleMenuOpen] = useState(false);
   const [langMenuOpen, setLangMenuOpen] = useState(false);
 
+  // Close menus on Escape or Outside Click for accessible interaction
+  React.useEffect(() => {
+    if (!roleMenuOpen && !langMenuOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setRoleMenuOpen(false);
+        setLangMenuOpen(false);
+      }
+    };
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('#role-menu-container') && !target.closest('#lang-menu-container')) {
+        setRoleMenuOpen(false);
+        setLangMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [roleMenuOpen, langMenuOpen]);
+
   // Time-aware greeting
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -144,12 +171,14 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Language Selector */}
           {onLanguageChange && (
-            <div className="relative">
+            <div id="lang-menu-container" className="relative">
               <button
                 type="button"
                 onClick={() => setLangMenuOpen(!langMenuOpen)}
                 className="px-2.5 py-1 rounded-full bg-[#FBF6EE] hover:bg-[#F5ECD9] border border-[#E8DCCB] text-[#544434] text-xs font-bold flex items-center gap-1.5 cursor-pointer btn-tactile"
                 aria-label="Change language"
+                aria-haspopup="true"
+                aria-expanded={langMenuOpen}
               >
                 <Globe className="w-3.5 h-3.5 text-[#1E4D3B]" />
                 <span className="uppercase">{language}</span>
@@ -157,7 +186,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
 
               {langMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white border-2 border-[#EADCCB] rounded-2xl shadow-xl z-50 p-1.5 space-y-0.5 animate-in fade-in zoom-in-95 duration-150">
+                <div 
+                  role="menu"
+                  aria-label="Language selection options"
+                  className="absolute right-0 mt-2 w-48 bg-white border-2 border-[#EADCCB] rounded-2xl shadow-xl z-50 p-1.5 space-y-0.5 animate-in fade-in zoom-in-95 duration-150"
+                >
                   <span className="text-[10px] uppercase font-bold text-[#8C7B6A] px-2.5 py-1 block">
                     Choose Language:
                   </span>
@@ -165,6 +198,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <button
                       key={lang.code}
                       type="button"
+                      role="menuitem"
                       onClick={() => {
                         onLanguageChange(lang.code);
                         setLangMenuOpen(false);
@@ -217,11 +251,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
 
           {/* Persona Switcher Menu */}
-          <div className="relative">
+          <div id="role-menu-container" className="relative">
             <button
               onClick={() => setRoleMenuOpen(!roleMenuOpen)}
               className="bg-[#FBF7F0] hover:bg-[#F5EDE0] border border-[#E8DCCB] text-[#423425] px-2.5 py-1 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
               aria-expanded={roleMenuOpen}
+              aria-haspopup="true"
             >
               <span>{roleLabels[currentRole].icon}</span>
               <span className="font-bold text-[#1E4D3B] hidden md:inline">{roleLabels[currentRole].title}</span>
