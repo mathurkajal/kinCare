@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    background-color: #FAF6F0;
+    color: #2D2824;
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.6;
+    letter-spacing: 0.01em;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, .font-serif-warm {
+    font-family: 'Fraunces', Georgia, serif;
+    letter-spacing: -0.015em;
+  }
+}
+
+/* Elder-First Accessible Font Scaling */
+.font-scale-standard {
+  font-size: 1rem;
+}
+
+.font-scale-large {
+  font-size: 1.18rem;
+}
+
+.font-scale-xlarge {
+  font-size: 1.35rem;
+}
+
+/* High-Contrast Focus Ring for Visual & Motor Assistance */
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: 4px solid #1E4D3B !important;
+  outline-offset: 3px !important;
+}
+
+/* Tactile physical button feel for seniors */
+.btn-tactile {
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  box-shadow: 0 4px 0 0 rgba(0, 0, 0, 0.08);
+}
+
+.btn-tactile:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 0 rgba(0, 0, 0, 0.08);
+}
+
+/* Soft paper/linen card texture effect */
+.card-home {
+  background-color: #FFFFFF;
+  border: 2px solid #EFE6D8;
+  border-radius: 1.5rem;
+  box-shadow: 0 4px 20px -2px rgba(90, 70, 50, 0.04);
+}
+
+/* Calming ambient background glow */
+.bg-warm-hearth {
+  background: radial-gradient(circle at 10% 20%, rgba(248, 237, 219, 0.6) 0%, rgba(250, 246, 240, 1) 90%);
+}
+
+/* High Contrast Mode for low vision & cataracts */
+.high-contrast {
+  filter: contrast(125%);
+}
+
+.high-contrast body {
+  background-color: #0A0A0A !important;
+  color: #FFFFFF !important;
+}
+
+.high-contrast .card-home,
+.high-contrast .bg-white,
+.high-contrast .bg-warm-hearth {
+  background-color: #141414 !important;
+  border-color: #FFFFFF !important;
+  color: #FFFFFF !important;
+}
+
+.high-contrast button {
+  border-width: 2px !important;
+  border-color: currentColor !important;
+}
+
+/* Reduced Motion Mode for vestibular and sensory sensitivity */
+.reduced-motion *,
+.reduced-motion *::before,
+.reduced-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}

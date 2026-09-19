@@ -1,0 +1,6 @@
+{
+  "name": "KinCare - Secure Elderly Companionship & Care Platform",
+  "description": "A trusted, dignity-first companionship and community care network connecting seniors, vetted volunteers, verified professionals, and families with safety protocols, daily wellness check-ins, and life story preservation.",
+  "requestFramePermissions": ["microphone", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
